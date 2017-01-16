@@ -1,14 +1,36 @@
 FROM python:3.5-alpine
 
-ENV DEDUPE_VERSION=1.6.0
-
 RUN set -ex \
         && apk add --no-cache --virtual .build-deps \
                 ca-certificates \
                 gcc \
                 g++ \
                 curl \
-        && ln -s /usr/include/locale.h /usr/include/xlocale.h \
-        && pip3 install --no-cache-dir --disable-pip-version-check numpy>=1.9 \
-        && pip3 install --no-cache-dir --disable-pip-version-check dedupe==${DEDUPE_VERSION} \
-        && apk del .build-deps
+                git \
+        && ln -s /usr/include/locale.h /usr/include/xlocale.h
+
+ENV DEDUPE_VERSION=bb25eff3e9050124546198e9bec00fe0eed47868
+ENV PIP_INSTALL="pip3 install --verbose --no-cache-dir --disable-pip-version-check"
+
+RUN set -ex \
+        && ${PIP_INSTALL} numpy>=1.11
+
+WORKDIR /dedupe
+
+RUN set -ex \
+        && git clone --verbose https://github.com/datamade/dedupe.git . \
+        && git checkout ${DEDUPE_VERSION}
+
+RUN set -ex \
+        && ${PIP_INSTALL} -r requirements.txt
+
+RUN set -ex \
+        && cython src/*.pyx
+
+RUN set -ex \
+        && ${PIP_INSTALL} -e .
+
+RUN set -ex \
+        && apk del .build-deps \
+        && cd / \
+        && rm -rf /dedupe
